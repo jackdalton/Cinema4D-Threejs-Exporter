@@ -1,5 +1,16 @@
 # coding=UTF-8
 
+""" TODO
+
+* Get materials from base doc
+	- L441
+
+* Determine which materials are active on mesh
+
+* Parse into JSON
+
+"""
+
 import sys
 import os.path
 import json
@@ -16,12 +27,12 @@ from c4d.utils import *
 class ThreeJsWriter(object):
 
 	def write(self, dialog):
-
 		self.output = OrderedDict()
 		self.dialog = dialog
 		self.doc = documents.GetActiveDocument()
 		self.op  = self.doc.GetActiveObject()
 		self.mesh = self.op.GetClone() # work on a clone
+		self.material = self.doc.GetFirstMaterial() # might not work
 		self.fps = self.dialog.GetInt32(ids.FPS)
 		self.minTime = self.doc.GetMinTime()
 		self.maxTime = self.doc.GetMaxTime()
@@ -44,6 +55,29 @@ class ThreeJsWriter(object):
 		self.markers = []
 		self.animations = []
 		self.jointKeyframeSummary = {}
+
+		#channels = ["CHANNEL_COLOR", "CHANNEL_LUMINANCE", "CHANNEL_TRANSPARANCY", "CHANNEL_REFLECTION", "CHANNEL_ENVIRONMENT", "CHANNEL_FOG", "CHANNEL_BUMP", "CHANNEL_ALPHA", "CHANNEL_SPECULAR", "CHANNEL_SPECULARCOLOR", "CHANNEl_GLOW", "CHANNEL_DISPLACEMENT", "CHANNEL_DIFFUSION", "CHANNEL_NORMAL", "CHANNEL_ANY"]
+		channels = {
+			"color": "CHANNEL_COLOR",
+			# "CHANNEL_LUMINANCE": c4d.CHANNEL_LUMINANCE,
+			# "CHANNEL_TRANSPARENCY": c4d.CHANNEL_TRANSPARENCY,
+			# "CHANNEL_REFLECTION": c4d.CHANNEL_REFLECTION,
+			# "CHANNEL_ENVIRONMENT": c4d.CHANNEL_ENVIRONMENT,
+			# "CHANNEL_FOG": c4d.CHANNEL_FOG,
+			# "CHANNEL_BUMP": c4d.CHANNEL_BUMP,
+			# "CHANNEL_ALPHA": c4d.CHANNEL_ALPHA,
+			# "CHANNEL_SPECULAR": c4d.CHANNEL_SPECULAR,
+			# "CHANNEL_SPECULARCOLOR": c4d.CHANNEL_SPECULARCOLOR,
+			# "CHANNEL_GLOW": c4d.CHANNEl_GLOW,
+			# "CHANNEL_DISPLACEMENT": c4d.CHANNEL_DISPLACEMENT,
+			# "CHANNEL_DIFFUSION": c4d.CHANNEL_DIFFUSION,
+			# "CHANNEL_NORMAL": c4d.CHANNEL_NORMAL
+		}
+		actives = []
+		for channel in channels:
+			key = channels[channel]
+			if self.material.GetChannelState(c4d[key]):
+				print "Color true"
 
 		self.flip = {'x': 1, 'y': 1, 'z': 1}
 		self.flipped = False
@@ -427,6 +461,8 @@ class ThreeJsWriter(object):
 			for i in range(0, influences - numWeights):
 				self.skinWeights.append(0)
 				self.skinIndices.append(0)
+
+
 
 	def _buildJointKeyframeSummary(self):
 		# iterate curves for each bone, add frames to ordered unique list
