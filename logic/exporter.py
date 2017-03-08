@@ -32,7 +32,7 @@ class ThreeJsWriter(object):
 		self.doc = documents.GetActiveDocument()
 		self.op  = self.doc.GetActiveObject()
 		self.mesh = self.op.GetClone() # work on a clone
-		self.material = self.doc.GetFirstMaterial() # might not work
+		self.material = self.doc.GetFirstMaterial() # FIXME: Only gets first material
 		self.fps = self.dialog.GetInt32(ids.FPS)
 		self.minTime = self.doc.GetMinTime()
 		self.maxTime = self.doc.GetMaxTime()
@@ -63,7 +63,7 @@ class ThreeJsWriter(object):
 			# "CHANNEL_TRANSPARENCY": c4d.CHANNEL_TRANSPARENCY,
 			# "CHANNEL_REFLECTION": c4d.CHANNEL_REFLECTION,
 			# "CHANNEL_ENVIRONMENT": c4d.CHANNEL_ENVIRONMENT,
-			# "CHANNEL_FOG": c4d.CHANNEL_FOG,
+			# "fog": c4d.CHANNEL_FOG,
 			# "CHANNEL_BUMP": c4d.CHANNEL_BUMP,
 			# "CHANNEL_ALPHA": c4d.CHANNEL_ALPHA,
 			# "CHANNEL_SPECULAR": c4d.CHANNEL_SPECULAR,
@@ -73,11 +73,28 @@ class ThreeJsWriter(object):
 			# "CHANNEL_DIFFUSION": c4d.CHANNEL_DIFFUSION,
 			# "CHANNEL_NORMAL": c4d.CHANNEL_NORMAL
 		}
-		actives = []
+
+		channelValues = {}
+
+		self.output["materials"] = [channelValues]
+
+		def _getIntFromRGB(r, g, b):
+			return (r<<16) + (g<<8) + b
+
 		for channel in channels:
 			key = channels[channel]
-			if self.material.GetChannelState(c4d[key]):
-				print "Color true"
+			if self.material.GetChannelState(getattr(c4d, key)):
+				if key == "CHANNEL_COLOR":
+					avgColor = self.material.GetAverageColor(getattr(c4d, key))
+					r = int(math.ceil(avgColor.x * 255))
+					g = int(math.ceil(avgColor.y * 255))
+					b = int(math.ceil(avgColor.z * 255))
+					hex = _getIntFromRGB(r, g, b)
+					channelValues["color"] = hex
+
+		#channelValues["uuid"] = 
+
+
 
 		self.flip = {'x': 1, 'y': 1, 'z': 1}
 		self.flipped = False
@@ -538,7 +555,7 @@ class ThreeJsWriter(object):
 			if frame >= startFrame and frame <= endFrame:
 				self._goToFrame(frame)
 				keys.append(self._getCurrentKeyframeData(joint, frame, startFrame))
-		
+
 		if keys: return keys
 		else: return False
 
@@ -601,9 +618,8 @@ def LocalToGlobal(obj, local_pos):
 	#Returns a point in local coordinate in global space.
 	obj_mg = obj.GetMg()
 	return obj_mg * local_pos
- 
+
 def GlobalToLocal(obj, global_pos):
 	#Returns a point in global coordinate in local space.
 	obj_mg = obj.GetMg()
 	return ~obj_mg * global_pos
-			
